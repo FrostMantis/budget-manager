@@ -4,3 +4,4 @@ PyMySQL
 python-dateutil
 flask_login
 gunicorn
+dotenv
