@@ -62,6 +62,21 @@ class FinanceService:
         db.session.commit()
 
     @staticmethod
+    def transfer_money(from_id, to_id, amount, note):
+        source = Bucket.query.get(from_id)
+        dest = Bucket.query.get(to_id)
+        
+        if source.balance >= amount:
+            source.balance -= amount
+            dest.balance += amount
+            
+            db.session.add(Transaction(bucket_id=source.id, amount=-amount, note=f"Transfer to {dest.name}: {note}"))
+            db.session.add(Transaction(bucket_id=dest.id, amount=amount, note=f"Transfer from {source.name}: {note}"))
+            db.session.commit()
+            return True
+        return False
+
+    @staticmethod
     def finalize_goal(goal_id, actual_cost):
         goal = Bucket.query.get(goal_id)
         savings = Bucket.query.filter_by(bucket_type='savings').first()

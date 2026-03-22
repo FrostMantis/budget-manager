@@ -1,50 +1,88 @@
 {% extends "layout.html" %}
 {% block content %}
+<style>
+    /* Type-specific badge colors to match Dashboard hierarchy */
+    .badge-savings { background-color: #198754; color: white; } /* Green */
+    .badge-everything { background-color: #dc3545; color: white; } /* Red */
+    .badge-standard { background-color: #6c757d; color: white; } /* Grey */
+    
+    .manage-card { border-radius: 15px; border: none; }
+    .table-container { background: white; border-radius: 15px; overflow: hidden; }
+</style>
+
 <div class="row">
     <div class="col-md-4">
-        <div class="card shadow-sm">
+        <div class="card shadow-sm manage-card">
             <div class="card-body">
-                <h5>New Bucket / Spending Category</h5>
+                <h5 class="fw-bold mb-3">Add Spending Wallet</h5>
+                <p class="text-muted small">Create a new category for your daily expenses (e.g., Groceries, Fuel, Hobby).</p>
                 <form action="/create-bucket" method="POST">
-                    <div class="mb-3"><label>Name</label><input type="text" name="name" class="form-control" placeholder="e.g. Groceries" required></div>
                     <div class="mb-3">
-                        <label>Type</label>
-                        <select name="type" class="form-select">
-                            <option value="standard">Standard Spending</option>
-                            <option value="goal">Financial Goal</option>
-                        </select>
+                        <label class="form-label small fw-bold">Wallet Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Groceries" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Create</button>
+                    <input type="hidden" name="type" value="standard">
+                    
+                    <button type="submit" class="btn btn-primary w-100 fw-bold">Create Wallet</button>
                 </form>
             </div>
         </div>
     </div>
+
     <div class="col-md-8">
-        <div class="card shadow-sm">
+        <div class="card shadow-sm manage-card table-container">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold">Manage Wallets & System Buckets</h5>
+            </div>
             <div class="table-responsive">
-                <table class="table align-middle">
-                    <thead><tr><th>Name</th><th>Type</th><th>Current Balance (€)</th><th>Action</th></tr></thead>
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Name</th>
+                            <th>Type</th>
+                            <th>Current Balance</th>
+                            <th class="text-end pe-4">Action</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         {% for b in buckets %}
+                        {# We filter out 'goal' type here to keep this view clean and focused #}
+                        {% if b.bucket_type != 'goal' %}
                         <tr>
-                            <td>{{ b.name }}</td>
-                            <td><span class="badge bg-secondary">{{ b.bucket_type }}</span></td>
+                            <td class="ps-4 fw-bold">{{ b.name }}</td>
                             <td>
-                                <form action="/update-balance/{{ b.id }}" method="POST" class="d-flex gap-2">
-                                    <input type="number" step="0.01" name="balance" class="form-control form-control-sm w-50" value="{{ b.balance }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-success">Set</button>
-                                </form>
+                                <span class="badge rounded-pill badge-{{ b.bucket_type }} px-3">
+                                    {{ b.bucket_type|upper }}
+                                </span>
                             </td>
                             <td>
+                                <form action="/update-balance/{{ b.id }}" method="POST" class="d-flex gap-2">
+                                    <div class="input-group input-group-sm w-75">
+                                        <span class="input-group-text bg-light">€</span>
+                                        <input type="number" step="0.01" name="balance" class="form-control" value="{{ b.balance }}">
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Save Balance">✓</button>
+                                </form>
+                            </td>
+                            <td class="text-end pe-4">
                                 {% if b.bucket_type not in ['savings', 'everything'] %}
-                                <a href="/delete-bucket/{{ b.id }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this bucket?')">Delete</a>
+                                <a href="/delete-bucket/{{ b.id }}" class="btn btn-sm btn-outline-danger border-0" onclick="return confirm('Delete this wallet? All history logs will remain but the wallet will be gone.')">
+                                    <i class="bi bi-trash"></i> Delete
+                                </a>
+                                {% else %}
+                                <span class="text-muted small italic">System Protected</span>
                                 {% endif %}
                             </td>
                         </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+        </div>
+        
+        <div class="mt-3 p-3 bg-light rounded text-muted small">
+            <i class="bi bi-info-circle me-1"></i> <strong>Pro-tip:</strong> Use the Goals tab to manage saving targets. This page is for your active spending power.
         </div>
     </div>
 </div>

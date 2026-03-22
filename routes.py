@@ -3,7 +3,6 @@ from models import db, Bucket, Transaction, IncomeSource, AllocationRule
 from services import FinanceService
 from datetime import date
 
-# Define the Blueprint
 bp = Blueprint('main', __name__)
 
 @bp.route('/')
@@ -18,6 +17,21 @@ def spend():
     amount = float(request.form.get('amount', 0))
     note = request.form.get('note', 'Expense')
     FinanceService.log_spend(bucket_id, amount, note)
+    return redirect(url_for('main.index'))
+
+@bp.route('/transfer', methods=['POST'])
+def transfer():
+    from_id = int(request.form.get('from_id'))
+    to_id = int(request.form.get('to_id'))
+    amount = float(request.form.get('amount', 0))
+    note = request.form.get('note', 'Manual Transfer')
+    
+    if from_id == to_id:
+        flash("Cannot transfer to the same bucket.")
+    elif FinanceService.transfer_money(from_id, to_id, amount, note):
+        flash("Transfer successful.")
+    else:
+        flash("Insufficient funds in source bucket.")
     return redirect(url_for('main.index'))
 
 @bp.route('/income')
@@ -37,14 +51,20 @@ def create_income_source():
     if unit != 'one-off' and not start_date:
         start_date = date.today()
 
-    new_source = IncomeSource(
-        name=name,
-        amount=amount,
-        frequency_unit=unit,
-        next_date=start_date,
-        is_active=True
-    )
+    new_source = IncomeSource(name=name, amount=amount, frequency_unit=unit, next_date=start_date, is_active=True)
     db.session.add(new_source)
+    db.session.commit()
+    return redirect(url_for('main.income_view'))
+
+@bp.route('/edit-income-source/<int:id>', methods=['POST'])
+def edit_income_source(id):
+    source = IncomeSource.query.get_or_404(id)
+    source.name = request.form.get('name')
+    source.amount = float(request.form.get('amount', 0))
+    source.frequency_unit = request.form.get('unit')
+    next_date_str = request.form.get('next_date')
+    if next_date_str:
+        source.next_date = date.fromisoformat(next_date_str)
     db.session.commit()
     return redirect(url_for('main.income_view'))
 
@@ -96,11 +116,7 @@ def create_bucket():
     name = request.form.get('name')
     b_type = request.form.get('type')
     target = request.form.get('target')
-    new_bucket = Bucket(
-        name=name,
-        bucket_type=b_type,
-        target_amount=float(target) if target else None
-    )
+    new_bucket = Bucket(name=name, bucket_type=b_type, target_amount=float(target) if target else None)
     db.session.add(new_bucket)
     db.session.commit()
     return redirect(request.referrer)
@@ -134,5 +150,4 @@ def delete_transaction(id):
     tx = Transaction.query.get_or_404(id)
     db.session.delete(tx)
     db.session.commit()
-    flash("Transaction entry removed from history.")
     return redirect(url_for('main.history'))

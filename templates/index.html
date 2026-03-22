@@ -1,40 +1,132 @@
 {% extends "layout.html" %}
 {% block content %}
+
+<style>
+    .net-power-card { height: 160px; border: none; border-radius: 15px; transition: transform 0.2s; }
+    .net-power-card:hover { transform: translateY(-5px); }
+    .bg-savings { background: linear-gradient(45deg, #198754, #28a745); color: white; }
+    .bg-everything { background: linear-gradient(45deg, #dc3545, #ff4d5a); color: white; }
+    
+    /* Small Bucket Colors - Cycle through these */
+    .bucket-card { border-radius: 12px; border-left: 8px solid; border-top: 0; border-right: 0; border-bottom: 0; transition: 0.2s; }
+    .bucket-card:hover { background-color: #f8f9fa; }
+    .color-0 { border-color: #6610f2; } /* Purple */
+    .color-1 { border-color: #0dcaf0; } /* Cyan */
+    .color-2 { border-color: #fd7e14; } /* Orange */
+    .color-3 { border-color: #20c997; } /* Teal */
+    .color-4 { border-color: #d63384; } /* Pink */
+
+    .goal-row { background: white; border-radius: 8px; padding: 10px 15px; margin-bottom: 8px; border: 1px solid #dee2e6; }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Dashboard</h2>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#spendModal">Log Spending</button>
+    <h2 class="fw-bold">Financial Overview</h2>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-dark shadow-sm" data-bs-toggle="modal" data-bs-target="#transferModal">⇄ Transfer</button>
+        <button class="btn btn-primary shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#spendModal">− Log Spend</button>
+    </div>
 </div>
 
-<div class="row">
+<div class="row mb-5">
     {% for b in buckets %}
-    <div class="col-md-3 mb-4">
-        <div class="card h-100 {{ 'card-everything' if b.bucket_type == 'everything' }} {{ 'card-savings' if b.bucket_type == 'savings' }}">
-            <div class="card-body text-center">
-                <h6 class="text-muted text-uppercase">{{ b.name }}</h6>
-                <p class="display-6 fw-bold">{{ "%.2f"|format(b.balance) }}€</p>
-                {% if b.bucket_type == 'goal' %}
-                <div class="progress"><div class="progress-bar" style="width: {{ (b.balance / b.target_amount * 100) if b.target_amount else 0 }}%"></div></div>
-                {% endif %}
+        {% if b.bucket_type == 'savings' %}
+        <div class="col-md-6 mb-3">
+            <div class="card net-power-card bg-savings shadow d-flex align-items-center justify-content-center">
+                <div class="text-center">
+                    <h5 class="text-uppercase opacity-75 small fw-bold">Total Savings</h5>
+                    <p class="display-4 fw-bold mb-0">{{ "%.2f"|format(b.balance) }}€</p>
+                </div>
             </div>
         </div>
-    </div>
+        {% elif b.bucket_type == 'everything' %}
+        <div class="col-md-6 mb-3">
+            <div class="card net-power-card bg-everything shadow d-flex align-items-center justify-content-center">
+                <div class="text-center">
+                    <h5 class="text-uppercase opacity-75 small fw-bold">Available to Spend</h5>
+                    <p class="display-4 fw-bold mb-0">{{ "%.2f"|format(b.balance) }}€</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+<h4 class="mb-3 fw-bold text-muted">Active Wallets</h4>
+<div class="row mb-5">
+    {% set count = data_py_loop_is_not_accessible_here_so_we_use_loop_index0 %}
+    {% for b in buckets %}
+        {% if b.bucket_type == 'standard' %}
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card bucket-card shadow-sm h-100 color-{{ loop.index0 % 5 }}">
+                <div class="card-body">
+                    <h6 class="text-muted small fw-bold text-uppercase">{{ b.name }}</h6>
+                    <h3 class="mb-0 fw-bold">{{ "%.2f"|format(b.balance) }}€</h3>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+<h4 class="mb-3 fw-bold text-muted">Financial Milestones</h4>
+<div class="mb-5">
+    {% for b in buckets %}
+        {% if b.bucket_type == 'goal' %}
+        <div class="goal-row shadow-sm d-flex align-items-center">
+            <div style="flex: 1;">
+                <span class="fw-bold">{{ b.name }}</span>
+                <span class="text-muted small ms-2">({{ "%.2f"|format(b.balance) }} / {{ b.target_amount }}€)</span>
+            </div>
+            <div style="flex: 2;" class="px-4">
+                {% set prog = (b.balance / b.target_amount * 100) if b.target_amount and b.target_amount > 0 else 0 %}
+                <div class="progress" style="height: 12px; border-radius: 10px;">
+                    <div class="progress-bar bg-success" style="width: {{ prog if prog <= 100 else 100 }}%"></div>
+                </div>
+            </div>
+            <div class="text-end fw-bold" style="width: 60px;">
+                {{ prog|round|int }}%
+            </div>
+        </div>
+        {% endif %}
     {% endfor %}
 </div>
 
 <div class="modal fade" id="spendModal" tabindex="-1">
     <div class="modal-dialog">
         <form action="/spend" method="POST" class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Record Expense</h5></div>
+            <div class="modal-header border-0"><h5>New Expense</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <div class="mb-3"><label>Amount (€)</label><input type="number" step="0.01" name="amount" class="form-control" required></div>
-                <div class="mb-3"><label>Bucket</label>
+                <div class="mb-3"><label class="form-label">Amount (€)</label><input type="number" step="0.01" name="amount" class="form-control" required></div>
+                <div class="mb-3"><label class="form-label">From Wallet</label>
                     <select name="bucket_id" class="form-select">
                         {% for b in buckets %}{% if b.bucket_type != 'savings' %}<option value="{{b.id}}">{{b.name}}</option>{% endif %}{% endfor %}
                     </select>
                 </div>
-                <div class="mb-3"><label>Note</label><input type="text" name="note" class="form-control"></div>
+                <div class="mb-3"><label class="form-label">Note</label><input type="text" name="note" class="form-control" placeholder="What was this for?"></div>
             </div>
-            <div class="modal-footer"><button type="submit" class="btn btn-primary">Save</button></div>
+            <div class="modal-footer border-0"><button type="submit" class="btn btn-primary w-100">Confirm Expense</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="transferModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="/transfer" method="POST" class="modal-content">
+            <div class="modal-header border-0"><h5>Internal Transfer</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label">Source</label>
+                    <select name="from_id" class="form-select">
+                        {% for b in buckets %}<option value="{{b.id}}">{{b.name}} ({{b.balance}}€)</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label">Destination</label>
+                    <select name="to_id" class="form-select">
+                        {% for b in buckets %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label">Amount (€)</label><input type="number" step="0.01" name="amount" class="form-control" required></div>
+            </div>
+            <div class="modal-footer border-0"><button type="submit" class="btn btn-dark w-100">Execute Transfer</button></div>
         </form>
     </div>
 </div>
