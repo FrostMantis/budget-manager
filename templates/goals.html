@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Financial Goals</h2>
+    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newGoalModal">+ Create New Goal</button>
+</div>
+
+<div class="row">
+    {% for g in goals %}
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <h5>{{ g.name }}</h5>
+                    <a href="/delete-bucket/{{ g.id }}" class="btn btn-close btn-sm" onclick="return confirm('Delete this goal?')"></a>
+                </div>
+                <p class="h4 my-3">{{ "%.2f"|format(g.balance) }}€ / {{ g.target_amount }}€</p>
+                
+                {% set progress = (g.balance / g.target_amount * 100) if g.target_amount and g.target_amount > 0 else 0 %}
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar bg-success" style="width: {{ progress if progress <= 100 else 100 }}%">
+                        {{ progress|round|int }}%
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-dark flex-grow-1" data-bs-toggle="modal" data-bs-target="#archive{{g.id}}">Archive & Finish</button>
+                    <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#adj{{g.id}}">Adjust</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="archive{{g.id}}" tabindex="-1">
+        <div class="modal-dialog">
+            <form action="/archive-goal/{{ g.id }}" method="POST" class="modal-content">
+                <div class="modal-header"><h5>Finish Goal: {{ g.name }}</h5></div>
+                <div class="modal-body">
+                    <p>How much did the item actually cost? Leftover saved money will go to Savings.</p>
+                    <label>Actual Price Paid (€):</label>
+                    <input type="number" step="0.01" name="actual_cost" class="form-control" value="{{ g.balance }}" required>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-success">Complete Purchase</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="adj{{g.id}}" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <form action="/update-balance/{{ g.id }}" method="POST" class="modal-content">
+                <div class="modal-body">
+                    <label>Force Balance To (€):</label>
+                    <input type="number" step="0.01" name="balance" class="form-control" value="{{ g.balance }}">
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary btn-sm">Save</button></div>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not goals %}
+    <div class="col-12">
+        <div class="alert alert-light text-center border">
+            No active goals. Click "Create New Goal" to start saving for something!
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="newGoalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="/create-bucket" method="POST" class="modal-content">
+            <div class="modal-header"><h5>Create New Goal</h5></div>
+            <div class="modal-body">
+                <input type="hidden" name="type" value="goal">
+                <div class="mb-3">
+                    <label>Goal Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. New Bike" required>
+                </div>
+                <div class="mb-3">
+                    <label>Target Amount (€)</label>
+                    <input type="number" step="0.01" name="target" class="form-control" placeholder="0.00" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Create Goal</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

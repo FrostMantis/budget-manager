@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Transaction History</h2>
+    <small class="text-muted">Note: Deleting history does not undo balance changes.</small>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Bucket</th>
+                    <th>Amount</th>
+                    <th>Note</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td>{{ t.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        {% if t.bucket %}
+                            <span class="badge bg-secondary">{{ t.bucket.name }}</span>
+                        {% else %}
+                            <span class="text-muted small">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td class="{{ 'text-danger fw-bold' if t.amount < 0 else 'text-success fw-bold' }}">
+                        {{ "%.2f"|format(t.amount) }}€
+                    </td>
+                    <td>{{ t.note }}</td>
+                    <td class="text-center">
+                        <a href="/delete-transaction/{{ t.id }}" 
+                           class="btn btn-sm btn-outline-danger" 
+                           onclick="return confirm('Are you sure you want to delete this log entry? This will not affect your current bucket balances.')">
+                            Delete
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not transactions %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">No transactions found.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

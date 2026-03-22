@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Dashboard</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#spendModal">Log Spending</button>
+</div>
+
+<div class="row">
+    {% for b in buckets %}
+    <div class="col-md-3 mb-4">
+        <div class="card h-100 {{ 'card-everything' if b.bucket_type == 'everything' }} {{ 'card-savings' if b.bucket_type == 'savings' }}">
+            <div class="card-body text-center">
+                <h6 class="text-muted text-uppercase">{{ b.name }}</h6>
+                <p class="display-6 fw-bold">{{ "%.2f"|format(b.balance) }}€</p>
+                {% if b.bucket_type == 'goal' %}
+                <div class="progress"><div class="progress-bar" style="width: {{ (b.balance / b.target_amount * 100) if b.target_amount else 0 }}%"></div></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="modal fade" id="spendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="/spend" method="POST" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Record Expense</h5></div>
+            <div class="modal-body">
+                <div class="mb-3"><label>Amount (€)</label><input type="number" step="0.01" name="amount" class="form-control" required></div>
+                <div class="mb-3"><label>Bucket</label>
+                    <select name="bucket_id" class="form-select">
+                        {% for b in buckets %}{% if b.bucket_type != 'savings' %}<option value="{{b.id}}">{{b.name}}</option>{% endif %}{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3"><label>Note</label><input type="text" name="note" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Save</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}

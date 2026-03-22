@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Income Management</h2>
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <h5>Create New Income Source</h5>
+        <form action="/create-income-source" method="POST" class="row g-2">
+            <div class="col-md-3"><input type="text" name="name" class="form-control" placeholder="Source Name" required></div>
+            <div class="col-md-2"><input type="number" name="amount" step="0.01" class="form-control" placeholder="Amount €" required></div>
+            <div class="col-md-2">
+                <select name="unit" class="form-select">
+                    <option value="one-off">One-Off</option>
+                    <option value="weeks">Weeks</option>
+                    <option value="months">Months</option>
+                </select>
+            </div>
+            <div class="col-md-3"><input type="date" name="start_date" class="form-control"></div>
+            <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    {% for s in sources %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between">
+                <strong>{{ s.name }} ({{ s.amount }}€)</strong>
+                <span class="badge bg-dark">{{ s.frequency_unit }}</span>
+            </div>
+            <div class="card-body">
+                <h6>Allocation Rules:</h6>
+                <ul class="list-group mb-3">
+                    {% for rule in s.rules %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ rule.bucket.name }}: {{ rule.amount }}€
+                        <a href="/delete-rule/{{ rule.id }}" class="btn btn-sm text-danger">×</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <form action="/add-rule/{{ s.id }}" method="POST" class="input-group input-group-sm">
+                    <select name="bucket_id" class="form-select">
+                        {% for b in buckets %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}
+                    </select>
+                    <input type="number" name="amount" step="0.01" class="form-control" placeholder="€">
+                    <button class="btn btn-success" type="submit">Add Rule</button>
+                </form>
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <a href="/process-now/{{ s.id }}" class="btn btn-sm btn-outline-success">Process Now</a>
+                <a href="/delete-source/{{ s.id }}" class="btn btn-sm btn-outline-danger">Delete Source</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
