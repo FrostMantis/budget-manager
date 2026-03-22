@@ -2,3 +2,4 @@ Flask
 Flask-SQLAlchemy
 PyMySQL
 python-dateutil
+flask_login
