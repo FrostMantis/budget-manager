@@ -4,6 +4,7 @@ from flask_login import LoginManager
 from models import db, User
 import routes
 from dotenv import load_dotenv
+from waitress import serve
 
 load_dotenv()
 
@@ -31,4 +32,4 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0')
+    serve(app, host='0.0.0.0', port=80)
