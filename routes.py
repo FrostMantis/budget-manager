@@ -60,14 +60,13 @@ def transfer():
         flash("Cannot transfer to the same bucket.")
         return redirect(url_for('main.index'))
         
-    # Verification: Ensure both buckets belong to user
     source = Bucket.query.filter_by(id=from_id, user_id=current_user.id).first_or_404()
     dest = Bucket.query.filter_by(id=to_id, user_id=current_user.id).first_or_404()
     
-    if FinanceService.transfer_money(current_user.id, source.id, dest.id, amount, note):
-        flash("Transfer successful.")
-    else:
-        flash("Insufficient funds in source bucket.")
+    # This will now process even if source.balance < amount
+    FinanceService.transfer_money(current_user.id, source.id, dest.id, amount, note)
+    flash("Transfer processed.") 
+    
     return redirect(url_for('main.index'))
 
 # --- INCOME & RULES ---

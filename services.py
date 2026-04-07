@@ -47,18 +47,11 @@ class FinanceService:
     @staticmethod
     def log_spend(user_id, bucket_id, amount, note):
         target = Bucket.query.filter_by(id=bucket_id, user_id=user_id).first()
-        everything = Bucket.query.filter_by(user_id=user_id, bucket_type='everything').first()
-
-        if not target or not everything:
+        if not target:
             return
 
-        if target.balance >= amount:
-            target.balance -= amount
-        else:
-            # Failover: Spend the bucket dry, then take the rest from 'Everything'
-            shortfall = amount - target.balance
-            target.balance = 0
-            everything.balance -= shortfall 
+        # Simplified: Always subtract the amount, allowing negative balance
+        target.balance -= amount
         
         db.session.add(Transaction(user_id=user_id, bucket_id=bucket_id, amount=-amount, note=note))
         db.session.commit()
@@ -68,7 +61,8 @@ class FinanceService:
         source = Bucket.query.filter_by(id=from_id, user_id=user_id).first()
         dest = Bucket.query.filter_by(id=to_id, user_id=user_id).first()
         
-        if source and dest and source.balance >= amount:
+        # Removed the check: 'if source.balance >= amount'
+        if source and dest:
             source.balance -= amount
             dest.balance += amount
             
