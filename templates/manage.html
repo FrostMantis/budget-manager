@@ -16,7 +16,9 @@
             <div class="card-body">
                 <h5 class="fw-bold mb-3">Add Spending Wallet</h5>
                 <p class="text-muted small">Create a new category for your daily expenses (e.g., Groceries, Fuel, Hobby).</p>
-                <form action="/create-bucket" method="POST">
+                <form action="{{ url_for('main.create_bucket') }}" method="POST">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ url_for('main.manage_view') }}">
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Wallet Name</label>
                         <input type="text" name="name" class="form-control" placeholder="e.g. Groceries" required>
@@ -56,7 +58,9 @@
                                 </span>
                             </td>
                             <td>
-                                <form action="/update-balance/{{ b.id }}" method="POST" class="d-flex gap-2">
+                                <form action="{{ url_for('main.update_balance', id=b.id) }}" method="POST" class="d-flex gap-2">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="{{ url_for('main.manage_view') }}">
                                     <div class="input-group input-group-sm w-75">
                                         <span class="input-group-text bg-light">€</span>
                                         <input type="number" step="0.01" name="balance" class="form-control" value="{{ b.balance }}">
@@ -66,9 +70,14 @@
                             </td>
                             <td class="text-end pe-4">
                                 {% if b.bucket_type not in ['savings', 'everything'] %}
-                                <a href="/delete-bucket/{{ b.id }}" class="btn btn-sm btn-outline-danger border-0" onclick="return confirm('Delete this wallet? All history logs will remain but the wallet will be gone.')">
-                                    <i class="bi bi-trash"></i> Delete
-                                </a>
+                                <form action="{{ url_for('main.delete_bucket', id=b.id) }}" method="POST" class="d-inline"
+                                      onsubmit="return confirm('Delete this wallet? All history logs will remain but the wallet will be gone.')">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="{{ url_for('main.manage_view') }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger border-0">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </form>
                                 {% else %}
                                 <span class="text-muted small italic">System Protected</span>
                                 {% endif %}

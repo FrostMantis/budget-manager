@@ -36,7 +36,10 @@
                     <span class="navbar-text me-3 small">
                         <i class="bi bi-person-circle me-1"></i> {{ current_user.username }}
                     </span>
-                    <a class="btn btn-sm btn-outline-warning" href="/logout">Logout</a>
+                    <form action="{{ url_for('main.logout') }}" method="POST" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-warning">Logout</button>
+                    </form>
                 </div>
             </div>
             {% endif %}
@@ -44,10 +47,11 @@
     </nav>
 
     <div class="container pb-5">
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
-            {% for message in messages %}
-              <div class="alert alert-info alert-dismissible fade show shadow-sm" role="alert">
+            {% for category, message in messages %}
+              {% set style = {'danger': 'alert-danger', 'success': 'alert-success'}.get(category, 'alert-info') %}
+              <div class="alert {{ style }} alert-dismissible fade show shadow-sm" role="alert">
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
               </div>

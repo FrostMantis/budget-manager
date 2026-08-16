@@ -5,7 +5,8 @@
 <div class="card mb-4 shadow-sm border-primary">
     <div class="card-body">
         <h5>Create New Income Source</h5>
-        <form action="/create-income-source" method="POST" class="row g-2">
+        <form action="{{ url_for('main.create_income_source') }}" method="POST" class="row g-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="col-md-3"><input type="text" name="name" class="form-control" placeholder="Source Name (e.g. Salary)" required></div>
             <div class="col-md-2"><input type="number" name="amount" step="0.01" class="form-control" placeholder="Amount €" required></div>
             <div class="col-md-2">
@@ -39,7 +40,10 @@
                     {% for rule in s.rules %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span>{{ rule.bucket.name }}: <strong>{{ rule.amount }}€</strong></span>
-                        <a href="/delete-rule/{{ rule.id }}" class="btn btn-sm text-danger" title="Delete Rule">×</a>
+                        <form action="{{ url_for('main.delete_rule', id=rule.id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm text-danger" title="Delete Rule">×</button>
+                        </form>
                     </li>
                     {% endfor %}
                     {% if not s.rules %}
@@ -47,7 +51,8 @@
                     {% endif %}
                 </ul>
 
-                <form action="/add-rule/{{ s.id }}" method="POST" class="input-group input-group-sm">
+                <form action="{{ url_for('main.add_rule', source_id=s.id) }}" method="POST" class="input-group input-group-sm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <select name="bucket_id" class="form-select">
                         {% for b in buckets %}
                             {% if b.bucket_type != 'savings' %}
@@ -60,15 +65,23 @@
                 </form>
             </div>
             <div class="card-footer d-flex justify-content-between bg-light">
-                <a href="/process-now/{{ s.id }}" class="btn btn-sm btn-success fw-bold">Process Now</a>
-                <a href="/delete-source/{{ s.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this entire income source and its rules?')">Delete Source</a>
+                <form action="{{ url_for('main.process_now', source_id=s.id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-success fw-bold">Process Now</button>
+                </form>
+                <form action="{{ url_for('main.delete_source', id=s.id) }}" method="POST" class="d-inline"
+                      onsubmit="return confirm('Delete this entire income source and its rules?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete Source</button>
+                </form>
             </div>
         </div>
     </div>
 
     <div class="modal fade" id="editSource{{ s.id }}" tabindex="-1">
         <div class="modal-dialog">
-            <form action="/edit-income-source/{{ s.id }}" method="POST" class="modal-content">
+            <form action="{{ url_for('main.edit_income_source', id=s.id) }}" method="POST" class="modal-content">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title">Edit: {{ s.name }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

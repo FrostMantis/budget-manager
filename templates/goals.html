@@ -12,7 +12,12 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <h5>{{ g.name }}</h5>
-                    <a href="/delete-bucket/{{ g.id }}" class="btn btn-close btn-sm" onclick="return confirm('Delete this goal?')"></a>
+                    <form action="{{ url_for('main.delete_bucket', id=g.id) }}" method="POST" class="d-inline"
+                          onsubmit="return confirm('Delete this goal?')">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="next" value="{{ url_for('main.goals_view') }}">
+                        <button type="submit" class="btn btn-close btn-sm" aria-label="Delete goal"></button>
+                    </form>
                 </div>
                 <p class="h4 my-3">{{ "%.2f"|format(g.balance) }}€ / {{ g.target_amount }}€</p>
                 
@@ -33,7 +38,8 @@
 
     <div class="modal fade" id="archive{{g.id}}" tabindex="-1">
         <div class="modal-dialog">
-            <form action="/archive-goal/{{ g.id }}" method="POST" class="modal-content">
+            <form action="{{ url_for('main.archive_goal', goal_id=g.id) }}" method="POST" class="modal-content">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header"><h5>Finish Goal: {{ g.name }}</h5></div>
                 <div class="modal-body">
                     <p>How much did the item actually cost? Leftover saved money will go to Savings.</p>
@@ -47,7 +53,9 @@
 
     <div class="modal fade" id="adj{{g.id}}" tabindex="-1">
         <div class="modal-dialog modal-sm">
-            <form action="/update-balance/{{ g.id }}" method="POST" class="modal-content">
+            <form action="{{ url_for('main.update_balance', id=g.id) }}" method="POST" class="modal-content">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ url_for('main.goals_view') }}">
                 <div class="modal-body">
                     <label>Force Balance To (€):</label>
                     <input type="number" step="0.01" name="balance" class="form-control" value="{{ g.balance }}">
@@ -69,7 +77,9 @@
 
 <div class="modal fade" id="newGoalModal" tabindex="-1">
     <div class="modal-dialog">
-        <form action="/create-bucket" method="POST" class="modal-content">
+        <form action="{{ url_for('main.create_bucket') }}" method="POST" class="modal-content">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ url_for('main.goals_view') }}">
             <div class="modal-header"><h5>Create New Goal</h5></div>
             <div class="modal-body">
                 <input type="hidden" name="type" value="goal">

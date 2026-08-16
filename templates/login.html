@@ -5,10 +5,10 @@
         <div class="card shadow">
             <div class="card-body">
                 <h3 class="text-center mb-4">Finance Login</h3>
-                {% with messages = get_flashed_messages() %}
-                  {% if messages %}{% for m in messages %}<div class="alert alert-danger">{{m}}</div>{% endfor %}{% endif %}
-                {% endwith %}
+                {# Flash messages are rendered by layout.html, which runs first
+                   and consumes them - a second loop here would always be empty. #}
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label>Username</label>
                         <input type="text" name="username" class="form-control" required>
