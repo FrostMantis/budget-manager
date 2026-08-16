@@ -234,6 +234,25 @@ python tests/test_render.py       # every page renders
 
 ---
 
+## The UI release (no migration)
+
+The UI/dark-mode/income-frequency release that follows the one above changes
+**no schema and adds no dependencies**, so it is just:
+
+```bash
+git pull
+sudo systemctl restart <your-service-name>
+```
+
+No `flask db upgrade`, no `pip install`. Two things to be aware of:
+
+- It adds a `static/` directory. Flask serves that itself, which is what
+  happens today with waitress. If anything is ever put in front of the app to
+  serve `/static` separately, it needs to point at this directory.
+- "Every N days/weeks/months/years" uses the `frequency_value` column, which
+  has existed since the first schema and was previously ignored. Existing rows
+  already hold `1`, so current sources keep their present behaviour.
+
 ## Future schema changes
 
 Now that Alembic is wired in, the loop is:

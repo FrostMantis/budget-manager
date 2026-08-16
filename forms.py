@@ -64,6 +64,21 @@ def parse_name(raw, field="Name", max_length=50):
     return value
 
 
+def parse_int_in_range(raw, field="Value", minimum=1, maximum=1000, default=None):
+    """Parse a bounded integer, e.g. the 'every N weeks' interval."""
+    if raw is None or str(raw).strip() == "":
+        if default is not None:
+            return default
+        raise InputError(f"{field} is required.")
+    try:
+        value = int(str(raw).strip())
+    except (TypeError, ValueError):
+        raise InputError(f"{field} must be a whole number.")
+    if value < minimum or value > maximum:
+        raise InputError(f"{field} must be between {minimum} and {maximum}.")
+    return value
+
+
 def parse_choice(raw, allowed, field="Value"):
     """Parse a value that must come from a fixed set.
 

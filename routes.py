@@ -5,13 +5,14 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash
 from models import (
     db, User, Bucket, Transaction, IncomeSource, AllocationRule,
-    SYSTEM_BUCKET_TYPES, FREQUENCY_UNITS,
+    SYSTEM_BUCKET_TYPES, FREQUENCY_UNITS, MAX_FREQUENCY_VALUE,
 )
 from services import FinanceService
 from forms import (
     InputError, flash_error, parse_amount, parse_id, parse_name, parse_choice,
+    parse_int_in_range,
 )
-from datetime import date
+from datetime import date, datetime
 
 bp = Blueprint('main', __name__)
 
@@ -22,12 +23,23 @@ CREATABLE_BUCKET_TYPES = ('standard', 'goal')
 
 
 def parse_date(raw, field="Date"):
+    """Parse a date from a form.
+
+    <input type="date"> always submits ISO yyyy-mm-dd regardless of how the
+    browser displays it, so that is the normal path. The day-first formats are
+    accepted too, so the field still works if it ever becomes a text input or
+    is posted by hand. mm/dd/yyyy is deliberately NOT accepted - 03/04/2026 is
+    always 3 April.
+    """
     if not raw:
         return None
-    try:
-        return date.fromisoformat(raw)
-    except (TypeError, ValueError):
-        raise InputError(f"{field} is invalid.")
+    raw = str(raw).strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except ValueError:
+            continue
+    raise InputError(f"{field} is invalid. Use day/month/year.")
 
 
 # --- AUTH ROUTES ---
@@ -117,7 +129,19 @@ def transfer():
 def income_view():
     sources = IncomeSource.query.filter_by(user_id=current_user.id, is_active=True).all()
     buckets = Bucket.query.filter_by(user_id=current_user.id, is_archived=False).all()
-    return render_template('income.html', sources=sources, buckets=buckets)
+    # Precompute the payday split so the page can show what will actually
+    # happen, rather than just listing rules and leaving the user to add up.
+    previews = {}
+    for s in sources:
+        rows, residual, savings = FinanceService.preview_allocation(s)
+        previews[s.id] = {
+            'rows': rows,
+            'residual': residual,
+            'savings': savings,
+            'dates': FinanceService.upcoming_dates(s, 3),
+        }
+    return render_template('income.html', sources=sources, buckets=buckets,
+                           previews=previews, today=date.today())
 
 
 @bp.route('/create-income-source', methods=['POST'])
@@ -127,6 +151,8 @@ def create_income_source():
         name = parse_name(request.form.get('name'), "Source name")
         amount = parse_amount(request.form.get('amount'), "Amount")
         unit = parse_choice(request.form.get('unit'), FREQUENCY_UNITS, "Frequency")
+        every = parse_int_in_range(request.form.get('every'), "Interval",
+                                   minimum=1, maximum=MAX_FREQUENCY_VALUE, default=1)
         start_date = parse_date(request.form.get('start_date'), "Start date") or date.today()
     except InputError as err:
         flash_error(err)
@@ -137,6 +163,7 @@ def create_income_source():
         name=name,
         amount=amount,
         frequency_unit=unit,
+        frequency_value=1 if unit == 'one-off' else every,
         next_date=start_date,
         is_active=True,
     ))
@@ -154,6 +181,9 @@ def edit_income_source(id):
         source.amount = parse_amount(request.form.get('amount'), "Amount")
         source.frequency_unit = parse_choice(
             request.form.get('unit'), FREQUENCY_UNITS, "Frequency")
+        every = parse_int_in_range(request.form.get('every'), "Interval",
+                                   minimum=1, maximum=MAX_FREQUENCY_VALUE, default=1)
+        source.frequency_value = 1 if source.frequency_unit == 'one-off' else every
         next_date = parse_date(request.form.get('next_date'), "Next date")
     except InputError as err:
         db.session.rollback()

@@ -3,42 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance Tracker</title>
+    <meta name="color-scheme" content="light dark">
+    <title>{% block title %}FinanceTracker{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <style>
-        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,.08); }
-        .card { border: none; border-radius: 12px; }
-        .btn-primary { background-color: #4361ee; border: none; }
-        .btn-primary:hover { background-color: #3f37c9; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    <script>
+    // Bootstrap 5.3 sets `color: var(--bs-body-color)` on .card, .modal-content,
+    // .table etc, and only switches those variables when data-bs-theme is set.
+    // Without this the app's own tokens darkened the surfaces while Bootstrap
+    // kept forcing near-black text on them - grey on black, unreadable.
+    // Runs in <head> so it applies before first paint.
+    (function () {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        var apply = function (dark) {
+            document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+        };
+        apply(mq.matches);
+        mq.addEventListener ? mq.addEventListener('change', function (e) { apply(e.matches); })
+                            : mq.addListener(function (e) { apply(e.matches); });
+    })();
+    </script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    {% set page = request.endpoint %}
+    <nav class="navbar navbar-expand-lg app-nav mb-4">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="/">
-                <i class="bi bi-wallet2 me-2"></i>FinanceTracker
+            <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('main.index') }}">
+                <i class="bi bi-wallet2"></i> FinanceTracker
             </a>
             {% if current_user.is_authenticated %}
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav">
-                    <a class="nav-link" href="/">Dashboard</a>
-                    <a class="nav-link" href="/income">Income & Rules</a>
-                    <a class="nav-link" href="/goals">Goals</a>
-                    <a class="nav-link" href="/manage">Wallets</a>
-                    <a class="nav-link" href="/history">History</a>
+                <div class="navbar-nav gap-1 ms-lg-3">
+                    <a class="nav-link {{ 'active' if page == 'main.index' }}" href="{{ url_for('main.index') }}">Dashboard</a>
+                    <a class="nav-link {{ 'active' if page == 'main.income_view' }}" href="{{ url_for('main.income_view') }}">Income</a>
+                    <a class="nav-link {{ 'active' if page == 'main.goals_view' }}" href="{{ url_for('main.goals_view') }}">Goals</a>
+                    <a class="nav-link {{ 'active' if page == 'main.manage_view' }}" href="{{ url_for('main.manage_view') }}">Wallets</a>
+                    <a class="nav-link {{ 'active' if page == 'main.history' }}" href="{{ url_for('main.history') }}">History</a>
                 </div>
-                <div class="navbar-nav ms-auto align-items-center">
-                    <span class="navbar-text me-3 small">
-                        <i class="bi bi-person-circle me-1"></i> {{ current_user.username }}
+                <div class="navbar-nav ms-auto align-items-lg-center gap-2 mt-3 mt-lg-0">
+                    <span class="text-muted small d-flex align-items-center gap-1">
+                        <i class="bi bi-person-circle"></i> {{ current_user.username }}
                     </span>
-                    <form action="{{ url_for('main.logout') }}" method="POST" class="d-inline">
+                    <form action="{{ url_for('main.logout') }}" method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-sm btn-outline-warning">Logout</button>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Log out</button>
                     </form>
                 </div>
             </div>
@@ -51,7 +63,7 @@
           {% if messages %}
             {% for category, message in messages %}
               {% set style = {'danger': 'alert-danger', 'success': 'alert-success'}.get(category, 'alert-info') %}
-              <div class="alert {{ style }} alert-dismissible fade show shadow-sm" role="alert">
+              <div class="alert {{ style }} alert-dismissible fade show" role="alert">
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
               </div>
@@ -63,5 +75,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>

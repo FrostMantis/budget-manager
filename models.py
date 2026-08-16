@@ -11,7 +11,14 @@ MONEY = db.Numeric(10, 2)
 
 BUCKET_TYPES = ('savings', 'everything', 'standard', 'goal')
 SYSTEM_BUCKET_TYPES = ('savings', 'everything')
-FREQUENCY_UNITS = ('one-off', 'weeks', 'months')
+
+# 'days' and 'years' are new; 'one-off', 'weeks' and 'months' are the original
+# three and must keep their exact spelling, since production rows store them.
+# Paired with frequency_value ('every N <unit>'), which has been in the schema
+# since the beginning but was never wired up.
+FREQUENCY_UNITS = ('one-off', 'days', 'weeks', 'months', 'years')
+RECURRING_UNITS = ('days', 'weeks', 'months', 'years')
+MAX_FREQUENCY_VALUE = 366
 
 
 def utcnow():

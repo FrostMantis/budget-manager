@@ -61,10 +61,29 @@ def create_app():
         except (TypeError, ValueError):
             return None
 
+    register_filters(app)
     app.register_blueprint(routes.bp)
     register_cli(app)
 
     return app
+
+
+def register_filters(app):
+    """Date formatting. Day-first, never month-first: 03/04 must always mean
+    3 April. Applied through filters so the format lives in exactly one place."""
+
+    @app.template_filter('dmy')
+    def dmy(value):
+        return value.strftime('%d/%m/%Y') if value else '—'
+
+    @app.template_filter('dmy_short')
+    def dmy_short(value):
+        # Same order, no year, for "then 25/09, 09/10, ..."
+        return value.strftime('%d/%m') if value else '—'
+
+    @app.template_filter('dmy_time')
+    def dmy_time(value):
+        return value.strftime('%d/%m/%Y %H:%M') if value else '—'
 
 
 def register_cli(app):

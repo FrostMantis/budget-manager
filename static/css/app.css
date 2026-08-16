@@ -1,0 +1,384 @@
+/* ==========================================================================
+   FinanceTracker design system
+   Loaded AFTER Bootstrap so it can override it. Bootstrap still does the
+   heavy lifting (grid, modals, dropdowns); this file owns how things look.
+
+   Previously each template carried its own <style> block, so the same card
+   appeared with three different radii and two different shadows depending on
+   which page you were on. Everything visual now lives here.
+   ========================================================================== */
+
+:root {
+    /* Surfaces: layered light-to-dark rather than white-on-grey */
+    --surface-page:   #f6f7f9;
+    --surface-card:   #ffffff;
+    --surface-sunken: #f1f3f5;
+    --surface-hover:  #f8f9fa;
+
+    /* Ink */
+    --ink-strong: #16191d;
+    --ink:        #3d444d;
+    --ink-muted:  #6b7480;
+    --ink-faint:  #99a1ac;
+
+    --line:       #e4e7eb;
+    --line-strong:#d3d8de;
+
+    /* One accent, used sparingly. Green/red are reserved for money signs
+       so they never compete with primary actions. */
+    --accent:       #4361ee;
+    --accent-hover: #3a52d4;
+    --accent-soft:  #eef1fe;
+    --accent-ink:   #2c3fb8;
+
+    --positive:      #0f7b4f;
+    --positive-soft: #e7f5ee;
+    --negative:      #c0392f;
+    --negative-soft: #fdeceb;
+    --warning:       #9a6700;
+    --warning-soft:  #fff8e5;
+
+    /* Accents for user wallets. Deliberately desaturated so a wall of
+       wallet cards reads as one system instead of a paint chart. */
+    --w0: #6366f1;
+    --w1: #0891b2;
+    --w2: #ea7317;
+    --w3: #0d9488;
+    --w4: #c2367f;
+
+    --radius-sm: 8px;
+    --radius:    12px;
+    --radius-lg: 16px;
+
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, .04);
+    --shadow:    0 1px 3px rgba(16, 24, 40, .06), 0 1px 2px rgba(16, 24, 40, .04);
+    --shadow-lg: 0 8px 24px rgba(16, 24, 40, .10);
+
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+            "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --surface-page:   #14161a;
+        --surface-card:   #1c1f25;
+        --surface-sunken: #23272e;
+        --surface-hover:  #23272e;
+
+        --ink-strong: #f0f2f5;
+        --ink:        #c5cbd3;
+        --ink-muted:  #949ba6;
+        --ink-faint:  #8b939e;
+
+        --line:        #2c313a;
+        --line-strong: #3a404b;
+
+        --accent:       #7c8fff;
+        --accent-hover: #93a3ff;
+        --accent-soft:  #232842;
+        --accent-ink:   #a8b5ff;
+
+        --positive:      #4ade80;
+        --positive-soft: #14301f;
+        --negative:      #f87171;
+        --negative-soft: #351a19;
+        --warning:       #fbbf24;
+        --warning-soft:  #332708;
+
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
+        --shadow:    0 1px 3px rgba(0, 0, 0, .35);
+        --shadow-lg: 0 8px 24px rgba(0, 0, 0, .45);
+
+        /* Bootstrap's own variables. The <head> script sets data-bs-theme,
+           which handles this properly; these are the no-JS fallback so text
+           inside .card / .modal / .table is never near-black on a dark
+           surface. Keep both - neither alone covers every case. */
+        --bs-body-color:      #c5cbd3;
+        --bs-body-bg:         #14161a;
+        --bs-emphasis-color:  #f0f2f5;
+        --bs-heading-color:   #f0f2f5;
+        --bs-secondary-color: #949ba6;
+        --bs-secondary-bg:    #23272e;
+        --bs-tertiary-color:  #8a929d;
+        --bs-tertiary-bg:     #1c1f25;
+        --bs-border-color:    #2c313a;
+    }
+}
+
+/* --------------------------------------------------------------- base ---- */
+
+body {
+    background-color: var(--surface-page);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--ink-strong);
+    letter-spacing: -0.02em;
+    font-weight: 650;
+}
+
+.page-title { font-size: 1.5rem; margin: 0; }
+.section-title {
+    font-size: .8125rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--ink-muted);
+    margin-bottom: .75rem;
+}
+
+.text-muted { color: var(--ink-muted) !important; }
+.text-faint { color: var(--ink-faint); }
+a { color: var(--accent); }
+
+/* Money must line up in columns and not jitter as digits change. */
+.money {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.01em;
+}
+/* These must win over component rules that set their own colour, e.g.
+   .wallet-value. Without the extra specificity a negative wallet balance
+   rendered in the default ink instead of red. */
+.money.money-pos { color: var(--positive); }
+.money.money-neg { color: var(--negative); }
+
+/* --------------------------------------------------------------- nav ----- */
+
+.app-nav {
+    background: var(--surface-card);
+    border-bottom: 1px solid var(--line);
+    padding: 0;
+}
+.app-nav .navbar-brand {
+    color: var(--ink-strong);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+.app-nav .nav-link {
+    color: var(--ink-muted);
+    font-weight: 550;
+    font-size: .9375rem;
+    padding: .5rem .875rem;
+    border-radius: var(--radius-sm);
+}
+.app-nav .nav-link:hover { color: var(--ink-strong); background: var(--surface-hover); }
+.app-nav .nav-link.active { color: var(--accent-ink); background: var(--accent-soft); }
+
+/* -------------------------------------------------------------- cards ---- */
+
+.card {
+    background: var(--surface-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--line);
+    padding: .875rem 1.125rem;
+    font-weight: 650;
+    color: var(--ink-strong);
+}
+.card-body { padding: 1.125rem; }
+
+/* Headline figures: Savings and Available-to-spend. Flat tinted panels, not
+   gradients - the old 45deg gradients read as decoration, not data. */
+.headline {
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    border: 1px solid transparent;
+    height: 100%;
+}
+.headline-label {
+    font-size: .75rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    opacity: .85;
+    margin-bottom: .375rem;
+}
+.headline-value { font-size: clamp(1.75rem, 5vw, 2.5rem); font-weight: 700; line-height: 1.1; }
+.headline-savings {
+    background: var(--positive-soft);
+    border-color: color-mix(in srgb, var(--positive) 20%, transparent);
+    color: var(--positive);
+}
+.headline-spend {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--accent-ink);
+}
+
+/* Wallet cards: a coloured rail rather than a coloured card. */
+.wallet {
+    background: var(--surface-card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--rail, var(--line-strong));
+    border-radius: var(--radius);
+    padding: .875rem 1rem;
+    height: 100%;
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.wallet:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.wallet-name {
+    font-size: .75rem; font-weight: 650; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--ink-muted);
+    margin-bottom: .25rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wallet-value { font-size: 1.25rem; font-weight: 650; color: var(--ink-strong); }
+.rail-0 { --rail: var(--w0); } .rail-1 { --rail: var(--w1); }
+.rail-2 { --rail: var(--w2); } .rail-3 { --rail: var(--w3); }
+.rail-4 { --rail: var(--w4); }
+
+/* Payday split rows: amounts right-align in a fixed column so the residual
+   row (which has no delete button) still lines up with the rules above it. */
+.split-row { border-bottom: 1px solid var(--line); }
+.split-row:last-child { border-bottom: none; }
+.split-amount { min-width: 5.5rem; text-align: right; }
+.split-action { width: 1.75rem; flex: none; display: flex; justify-content: flex-end; }
+
+/* -------------------------------------------------------------- goals ---- */
+
+.goal-row {
+    background: var(--surface-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: .875rem 1.125rem;
+    margin-bottom: .625rem;
+}
+.progress {
+    background: var(--surface-sunken);
+    border-radius: 999px;
+    height: 8px;
+    overflow: hidden;
+}
+.progress-bar { background: var(--accent); border-radius: 999px; }
+.progress-bar.is-complete { background: var(--positive); }
+
+/* ------------------------------------------------------------ controls --- */
+
+.btn { border-radius: var(--radius-sm); font-weight: 600; font-size: .9375rem; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover, .btn-primary:focus {
+    background: var(--accent-hover); border-color: var(--accent-hover); color: #fff;
+}
+@media (prefers-color-scheme: dark) {
+    /* The dark accent is a light blue; white on it is only 2.9:1, so the
+       button carries dark ink instead. */
+    :root:not([data-theme="light"]) .btn-primary,
+    :root:not([data-theme="light"]) .btn-primary:hover,
+    :root:not([data-theme="light"]) .btn-primary:focus { color: #14161a; }
+}
+.btn-outline-secondary {
+    color: var(--ink); border-color: var(--line-strong); background: var(--surface-card);
+}
+.btn-outline-secondary:hover { background: var(--surface-hover); color: var(--ink-strong); border-color: var(--line-strong); }
+
+/* A link that performs an action is now a <form><button> for CSRF reasons.
+   This makes such buttons look like the links they replaced. */
+.btn-link-quiet {
+    background: none; border: none; padding: .25rem .375rem;
+    color: var(--ink-faint); border-radius: var(--radius-sm);
+    line-height: 1; cursor: pointer;
+}
+.btn-link-quiet:hover { color: var(--negative); background: var(--negative-soft); }
+
+.form-control, .form-select {
+    border-radius: var(--radius-sm);
+    border-color: var(--line-strong);
+    background: var(--surface-card);
+    color: var(--ink-strong);
+    font-size: .9375rem;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    background: var(--surface-card);
+    color: var(--ink-strong);
+}
+.form-control::placeholder { color: var(--ink-faint); }
+.form-label { font-size: .8125rem; font-weight: 600; color: var(--ink); margin-bottom: .3125rem; }
+.input-group-text {
+    background: var(--surface-sunken); border-color: var(--line-strong);
+    color: var(--ink-muted); border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------------------- tables ---- */
+
+.table { color: var(--ink); margin-bottom: 0; }
+.table > :not(caption) > * > * {
+    background: transparent;
+    border-bottom-color: var(--line);
+    padding: .75rem 1rem;
+}
+.table thead th {
+    font-size: .75rem; font-weight: 650; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--ink-muted);
+    background: var(--surface-sunken);
+    border-bottom: 1px solid var(--line);
+}
+.table-hover > tbody > tr:hover > * { background: var(--surface-hover); }
+
+@media (prefers-color-scheme: dark) {
+    /* Bootstrap ships these as dark SVGs baked into background-image. */
+    :root:not([data-theme="light"]) .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+    :root:not([data-theme="light"]) .navbar-toggler-icon { filter: invert(1) opacity(.75); }
+}
+
+/* -------------------------------------------------------------- misc ----- */
+
+.badge-soft {
+    display: inline-block;
+    font-size: .6875rem; font-weight: 650;
+    text-transform: uppercase; letter-spacing: .04em;
+    padding: .25rem .5rem; border-radius: 999px;
+    background: var(--surface-sunken); color: var(--ink-muted);
+}
+.badge-savings    { background: var(--positive-soft); color: var(--positive); }
+.badge-everything { background: var(--accent-soft);   color: var(--accent-ink); }
+.badge-goal       { background: var(--warning-soft);  color: var(--warning); }
+
+.alert { border-radius: var(--radius); border: 1px solid transparent; font-size: .9375rem; }
+.alert-success { background: var(--positive-soft); border-color: color-mix(in srgb, var(--positive) 25%, transparent); color: var(--positive); }
+.alert-danger  { background: var(--negative-soft); border-color: color-mix(in srgb, var(--negative) 25%, transparent); color: var(--negative); }
+.alert-info    { background: var(--accent-soft);   border-color: color-mix(in srgb, var(--accent) 25%, transparent);   color: var(--accent-ink); }
+
+.modal-content {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: var(--surface-card);
+}
+.modal-header, .modal-footer { border-color: var(--line); }
+
+.empty-state {
+    text-align: center;
+    padding: 2.5rem 1.25rem;
+    color: var(--ink-muted);
+    background: var(--surface-card);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+}
+
+.divider-label {
+    display: flex; align-items: center; gap: .75rem;
+    color: var(--ink-faint); font-size: .75rem;
+    text-transform: uppercase; letter-spacing: .06em; font-weight: 650;
+}
+.divider-label::after {
+    content: ""; flex: 1; height: 1px; background: var(--line);
+}
+
+/* ---------------------------------------------------------- responsive --- */
+
+@media (max-width: 575.98px) {
+    .card-body { padding: .875rem; }
+    .headline { padding: 1.125rem; }
+    /* Stacked action buttons should fill the width and be thumb-sized. */
+    .btn-stack-sm { width: 100%; padding-top: .625rem; padding-bottom: .625rem; }
+    .table > :not(caption) > * > * { padding: .625rem .75rem; }
+}

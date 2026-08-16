@@ -1,6 +1,8 @@
 from decimal import Decimal
 
-from models import db, Bucket, Transaction, IncomeSource
+from flask import current_app
+
+from models import db, Bucket, Transaction, IncomeSource, RECURRING_UNITS
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
@@ -20,14 +22,30 @@ class FinanceService:
         """
         if source.frequency_unit == 'one-off' or not source.next_date:
             return False
-        step = max(int(source.frequency_value or 1), 1)
-        if source.frequency_unit == 'weeks':
-            source.next_date += relativedelta(weeks=step)
-        elif source.frequency_unit == 'months':
-            source.next_date += relativedelta(months=step)
-        else:
+
+        delta = FinanceService.period_delta(source.frequency_unit, source.frequency_value)
+        if delta is None:
+            # Unknown unit. Do NOT fall through to the caller's deactivate
+            # branch: an unrecognised unit is a data problem, and silently
+            # switching off someone's salary is the worst possible response.
             return False
+
+        source.next_date += delta
         return True
+
+    @staticmethod
+    def period_delta(unit, value=1):
+        """relativedelta for 'every N <unit>', or None if the unit is unknown."""
+        step = max(int(value or 1), 1)
+        if unit == 'days':
+            return relativedelta(days=step)
+        if unit == 'weeks':
+            return relativedelta(weeks=step)
+        if unit == 'months':
+            return relativedelta(months=step)
+        if unit == 'years':
+            return relativedelta(years=step)
+        return None
 
     @staticmethod
     def _apply_once(source, user_id):
@@ -82,7 +100,18 @@ class FinanceService:
         """
         source = IncomeSource.query.filter_by(id=source_id, user_id=user_id).first()
         if not source:
-            return
+            return 0
+
+        unit = source.frequency_unit
+        # Refuse to touch a source whose unit we do not recognise. Paying it
+        # out would repeat on every dashboard load (next_date can never
+        # advance), and deactivating it would silently switch off someone's
+        # income over what is really a data problem. Do neither, and say so.
+        if unit != 'one-off' and unit not in RECURRING_UNITS:
+            current_app.logger.error(
+                "Income source %s has unknown frequency_unit %r - skipped.",
+                source.id, unit)
+            return 0
 
         today = date.today()
         applied = 0
@@ -102,6 +131,60 @@ class FinanceService:
 
         db.session.commit()
         return applied
+
+    @staticmethod
+    def preview_allocation(source):
+        """Work out where the next payment would land, without changing anything.
+
+        Mirrors _apply_once so the Income page can show the split before it
+        happens. Returns (rows, residual, savings_bucket) where rows is a list
+        of (rule, bucket, amount, capped) - `capped` marks a rule trimmed
+        because the goal would have overshot its target. The rule is included
+        so the template can build a delete link without having to match rules
+        back to buckets (two rules may target the same bucket).
+        """
+        savings = Bucket.query.filter_by(
+            user_id=source.user_id, bucket_type='savings').first()
+        remaining = Decimal(source.amount or 0)
+        rows = []
+
+        for rule in source.rules:
+            bucket = rule.bucket
+            if not bucket or bucket.user_id != source.user_id or bucket.is_archived:
+                continue
+            if remaining <= ZERO:
+                rows.append((rule, bucket, ZERO, False))
+                continue
+
+            amount = Decimal(rule.amount or 0)
+            capped = False
+            if bucket.bucket_type == 'goal' and bucket.target_amount:
+                headroom = Decimal(bucket.target_amount) - Decimal(bucket.balance or 0)
+                if headroom <= ZERO:
+                    rows.append((rule, bucket, ZERO, True))
+                    continue
+                if amount > headroom:
+                    amount, capped = headroom, True
+
+            transfer = min(amount, remaining)
+            remaining -= transfer
+            rows.append((rule, bucket, transfer, capped))
+
+        return rows, remaining, savings
+
+    @staticmethod
+    def upcoming_dates(source, count=3):
+        """The next few payment dates, for showing a schedule in the UI."""
+        if not source.next_date or source.frequency_unit == 'one-off':
+            return [source.next_date] if source.next_date else []
+        delta = FinanceService.period_delta(source.frequency_unit, source.frequency_value)
+        if delta is None:
+            return [source.next_date]
+        out, d = [], source.next_date
+        for _ in range(count):
+            out.append(d)
+            d = d + delta
+        return out
 
     @staticmethod
     def log_spend(user_id, bucket_id, amount, note):

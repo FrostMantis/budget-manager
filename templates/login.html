@@ -1,23 +1,27 @@
 {% extends "layout.html" %}
+{% block title %}Sign in · FinanceTracker{% endblock %}
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-4">
-        <div class="card shadow">
-            <div class="card-body">
-                <h3 class="text-center mb-4">Finance Login</h3>
+<div class="row justify-content-center" style="margin-top:6vh">
+    <div class="col-md-5 col-lg-4">
+        <div class="card">
+            <div class="card-body p-4">
+                <h1 class="h4 text-center mb-1">Welcome back</h1>
+                <p class="small text-muted text-center mb-4">Sign in to your budget.</p>
                 {# Flash messages are rendered by layout.html, which runs first
                    and consumes them - a second loop here would always be empty. #}
                 <form method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
-                        <label>Username</label>
-                        <input type="text" name="username" class="form-control" required>
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-control"
+                               autocomplete="username" required autofocus>
                     </div>
-                    <div class="mb-3">
-                        <label>Password</label>
-                        <input type="password" name="password" class="form-control" required>
+                    <div class="mb-4">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-control"
+                               autocomplete="current-password" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                    <button type="submit" class="btn btn-primary w-100">Sign in</button>
                 </form>
             </div>
         </div>

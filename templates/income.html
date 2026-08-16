@@ -1,121 +1,302 @@
 {% extends "layout.html" %}
-{% block content %}
-<h2>Income Management</h2>
+{% block title %}Income &amp; Rules · FinanceTracker{% endblock %}
 
-<div class="card mb-4 shadow-sm border-primary">
-    <div class="card-body">
-        <h5>Create New Income Source</h5>
-        <form action="{{ url_for('main.create_income_source') }}" method="POST" class="row g-2">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="col-md-3"><input type="text" name="name" class="form-control" placeholder="Source Name (e.g. Salary)" required></div>
-            <div class="col-md-2"><input type="number" name="amount" step="0.01" class="form-control" placeholder="Amount €" required></div>
-            <div class="col-md-2">
-                <select name="unit" class="form-select">
-                    <option value="one-off">One-Off</option>
-                    <option value="weeks">Weeks</option>
-                    <option value="months">Months</option>
-                </select>
-            </div>
-            <div class="col-md-3"><input type="date" name="start_date" class="form-control"></div>
-            <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Add Source</button></div>
-        </form>
+{#
+  Reworked around one question: "what happens when this money arrives?"
+  The old page listed rules and left you to add them up against the amount.
+  Each source now shows the actual split, including the residual that falls
+  through to Savings, and flags when rules exceed the income.
+#}
+
+{% macro schedule_text(s) -%}
+    {%- if s.frequency_unit == 'one-off' -%}
+        One-off
+    {%- elif (s.frequency_value or 1) == 1 -%}
+        Every {{ {'days':'day','weeks':'week','months':'month','years':'year'}[s.frequency_unit] }}
+    {%- else -%}
+        Every {{ s.frequency_value }} {{ s.frequency_unit }}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro frequency_fields(unit, value, id_prefix) -%}
+<div class="row g-2">
+    <div class="col-5">
+        <label class="form-label">Repeats</label>
+        <select name="unit" class="form-select freq-unit" data-target="{{ id_prefix }}-every">
+            <option value="one-off" {{ 'selected' if unit == 'one-off' }}>Never (one-off)</option>
+            <option value="days"    {{ 'selected' if unit == 'days' }}>Daily</option>
+            <option value="weeks"   {{ 'selected' if unit == 'weeks' }}>Weekly</option>
+            <option value="months"  {{ 'selected' if unit == 'months' }}>Monthly</option>
+            <option value="years"   {{ 'selected' if unit == 'years' }}>Yearly</option>
+        </select>
+    </div>
+    <div class="col-7">
+        <label class="form-label">Interval</label>
+        <div class="input-group" id="{{ id_prefix }}-every"
+             {% if unit == 'one-off' %}style="display:none"{% endif %}>
+            <span class="input-group-text">every</span>
+            <input type="number" name="every" class="form-control" min="1" max="366"
+                   value="{{ value or 1 }}">
+            <span class="input-group-text freq-suffix">{{ 'period' if unit == 'one-off' else unit }}</span>
+        </div>
     </div>
 </div>
+{%- endmacro %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h2 class="page-title">Income &amp; Rules</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newSourceModal">
+        <i class="bi bi-plus-lg me-1"></i> Add income source
+    </button>
+</div>
+
+{% if not sources %}
+<div class="empty-state">
+    <i class="bi bi-cash-stack" style="font-size:1.75rem; opacity:.4"></i>
+    <p class="mt-2 mb-1 fw-semibold">No income sources yet</p>
+    <p class="small mb-0">Add one to describe money coming in, then set rules for where it goes.</p>
+</div>
+{% endif %}
 
 <div class="row">
-    {% for s in sources %}
-    <div class="col-md-6 mb-4">
-        <div class="card h-100 shadow-sm border-dark">
-            <div class="card-header d-flex justify-content-between align-items-center bg-dark text-white">
-                <span><strong>{{ s.name }}</strong> ({{ s.amount }}€)</span>
-                <span class="badge bg-info text-dark">{{ s.frequency_unit }}</span>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-2">
-                    <h6>Allocation Rules:</h6>
-                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSource{{ s.id }}">Edit Source</button>
+{% for s in sources %}
+    {% set p = previews[s.id] %}
+    {% set overcommitted = (s.rules | sum(attribute='amount')) > s.amount %}
+
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span>{{ s.name }}</span>
+                        <span class="badge-soft">{{ schedule_text(s) }}</span>
+                    </div>
+                    <div class="money fw-bold mt-1" style="font-size:1.25rem; color:var(--positive)">
+                        +{{ "%.2f"|format(s.amount) }}€
+                    </div>
                 </div>
-                
-                <ul class="list-group mb-3">
-                    {% for rule in s.rules %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>{{ rule.bucket.name }}: <strong>{{ rule.amount }}€</strong></span>
-                        <form action="{{ url_for('main.delete_rule', id=rule.id) }}" method="POST" class="d-inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-sm text-danger" title="Delete Rule">×</button>
-                        </form>
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                        data-bs-target="#editSource{{ s.id }}" title="Edit source">
+                    <i class="bi bi-pencil"></i>
+                </button>
+            </div>
+
+            <div class="card-body">
+                {# ---- when ---- #}
+                <div class="d-flex align-items-center gap-2 mb-3 small">
+                    <i class="bi bi-calendar-event text-muted"></i>
+                    {% if s.next_date %}
+                        <span>
+                            Next
+                            <strong>{{ s.next_date|dmy }}</strong>
+                            {% if s.next_date < today %}
+                                <span class="badge-soft badge-goal ms-1">overdue</span>
+                            {% elif s.next_date == today %}
+                                <span class="badge-soft badge-savings ms-1">today</span>
+                            {% endif %}
+                        </span>
+                    {% else %}
+                        <span class="text-muted">No date set</span>
+                    {% endif %}
+                </div>
+                {% if p.dates | length > 1 %}
+                <p class="small text-faint mb-3" style="margin-top:-.5rem">
+                    then {{ p.dates[1]|dmy_short }}, {{ p.dates[2]|dmy_short }}, &hellip;
+                </p>
+                {% endif %}
+
+                {# ---- where it goes ---- #}
+                <div class="divider-label mb-2">On payday</div>
+
+                {% if overcommitted %}
+                <div class="alert alert-danger py-2 px-3 small mb-3">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Your rules ask for more than this income provides. Rules are applied
+                    in order and later ones will be short.
+                </div>
+                {% endif %}
+
+                <ul class="list-unstyled mb-3">
+                    {% for rule, bucket, amount, capped in p.rows %}
+                    <li class="split-row d-flex justify-content-between align-items-center py-2 gap-2">
+                        <span class="d-flex align-items-center gap-2 text-truncate">
+                            <i class="bi bi-arrow-right-short text-muted"></i>
+                            <span class="text-truncate">{{ bucket.name }}</span>
+                            {% if capped and amount > 0 %}
+                                {# Trimmed so the goal lands exactly on target. #}
+                                <span class="badge-soft badge-goal text-nowrap">caps at target</span>
+                            {% elif capped %}
+                                <span class="badge-soft badge-goal text-nowrap">goal full</span>
+                            {% endif %}
+                        </span>
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="money fw-semibold split-amount {{ 'text-faint' if amount == 0 }}">
+                                {{ "%.2f"|format(amount) }}€
+                            </span>
+                            <span class="split-action">
+                                <form action="{{ url_for('main.delete_rule', id=rule.id) }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-link-quiet" title="Remove rule">
+                                        <i class="bi bi-x-lg" style="font-size:.75rem"></i>
+                                    </button>
+                                </form>
+                            </span>
+                        </span>
                     </li>
                     {% endfor %}
-                    {% if not s.rules %}
-                    <li class="list-group-item text-muted small text-center">No rules set. All goes to Savings.</li>
-                    {% endif %}
+
+                    <li class="split-row d-flex justify-content-between align-items-center py-2 gap-2">
+                        <span class="d-flex align-items-center gap-2 text-truncate">
+                            <i class="bi bi-arrow-return-right text-muted"></i>
+                            <span class="text-truncate">{{ p.savings.name if p.savings else 'Savings' }}</span>
+                            <span class="badge-soft text-nowrap">remainder</span>
+                        </span>
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="money fw-semibold split-amount {{ 'text-faint' if p.residual == 0 }}">
+                                {{ "%.2f"|format(p.residual) }}€
+                            </span>
+                            {# empty cell keeps this amount aligned with the rows above #}
+                            <span class="split-action"></span>
+                        </span>
+                    </li>
                 </ul>
 
-                <form action="{{ url_for('main.add_rule', source_id=s.id) }}" method="POST" class="input-group input-group-sm">
+                {# ---- add a rule ---- #}
+                <form action="{{ url_for('main.add_rule', source_id=s.id) }}" method="POST"
+                      class="row g-2 align-items-end">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <select name="bucket_id" class="form-select">
-                        {% for b in buckets %}
-                            {% if b.bucket_type != 'savings' %}
-                            <option value="{{b.id}}">{{b.name}}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                    <input type="number" name="amount" step="0.01" class="form-control" placeholder="€ Rule">
-                    <button class="btn btn-success" type="submit">Add Rule</button>
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label">Send to</label>
+                        <select name="bucket_id" class="form-select form-select-sm">
+                            {% for b in buckets %}
+                                {% if b.bucket_type != 'savings' %}
+                                <option value="{{ b.id }}">{{ b.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <label class="form-label">Amount</label>
+                        <input type="number" name="amount" step="0.01" min="0.01"
+                               class="form-control form-control-sm" placeholder="0.00">
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <button class="btn btn-sm btn-outline-secondary w-100 text-nowrap" type="submit">Add rule</button>
+                    </div>
                 </form>
             </div>
-            <div class="card-footer d-flex justify-content-between bg-light">
-                <form action="{{ url_for('main.process_now', source_id=s.id) }}" method="POST" class="d-inline">
+
+            <div class="card-footer bg-transparent d-flex justify-content-between gap-2">
+                <form action="{{ url_for('main.process_now', source_id=s.id) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-sm btn-success fw-bold">Process Now</button>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-lightning-charge me-1"></i>Pay now
+                    </button>
                 </form>
-                <form action="{{ url_for('main.delete_source', id=s.id) }}" method="POST" class="d-inline"
+                <form action="{{ url_for('main.delete_source', id=s.id) }}" method="POST"
                       onsubmit="return confirm('Delete this entire income source and its rules?')">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete Source</button>
+                    <button type="submit" class="btn-link-quiet small">Delete source</button>
                 </form>
             </div>
         </div>
     </div>
 
+    {# ---- edit modal ---- #}
     <div class="modal fade" id="editSource{{ s.id }}" tabindex="-1">
         <div class="modal-dialog">
             <form action="{{ url_for('main.edit_income_source', id=s.id) }}" method="POST" class="modal-content">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit: {{ s.name }}</h5>
+                    <h5 class="modal-title">Edit {{ s.name }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Source Name</label>
+                        <label class="form-label">Name</label>
                         <input type="text" name="name" class="form-control" value="{{ s.name }}" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Amount (€)</label>
-                        <input type="number" name="amount" step="0.01" class="form-control" value="{{ s.amount }}" required>
+                        <input type="number" name="amount" step="0.01" min="0.01"
+                               class="form-control" value="{{ "%.2f"|format(s.amount) }}" required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Frequency</label>
-                        <select name="unit" class="form-select">
-                            <option value="one-off" {{ 'selected' if s.frequency_unit == 'one-off' }}>One-Off</option>
-                            <option value="weeks" {{ 'selected' if s.frequency_unit == 'weeks' }}>Weeks</option>
-                            <option value="months" {{ 'selected' if s.frequency_unit == 'months' }}>Months</option>
-                        </select>
+                    {{ frequency_fields(s.frequency_unit, s.frequency_value, 'edit' ~ s.id) }}
+                    <div class="mt-3">
+                        <label class="form-label">Next arrival date</label>
+                        <input type="text" name="next_date" class="form-control"
+                               inputmode="numeric" placeholder="dd/mm/yyyy"
+                               pattern="\d{1,2}/\d{1,2}/\d{4}"
+                               title="Day/month/year, e.g. 25/08/2026"
+                               value="{{ s.next_date.strftime('%d/%m/%Y') if s.next_date }}">
+                        <div class="form-text">Day/month/year — e.g. 25/08/2026.</div>
                     </div>
-                    {% if s.frequency_unit != 'one-off' %}
-                    <div class="mb-3">
-                        <label class="form-label">Next Arrival Date</label>
-                        <input type="date" name="next_date" class="form-control" value="{{ s.next_date }}">
-                    </div>
-                    {% endif %}
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
                 </div>
             </form>
         </div>
     </div>
-    {% endfor %}
+{% endfor %}
 </div>
+
+{# ---- new source modal ---- #}
+<div class="modal fade" id="newSourceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="{{ url_for('main.create_income_source') }}" method="POST" class="modal-content">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-header">
+                <h5 class="modal-title">New income source</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Salary" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Amount (€)</label>
+                    <input type="number" name="amount" step="0.01" min="0.01"
+                           class="form-control" placeholder="0.00" required>
+                </div>
+                {{ frequency_fields('months', 1, 'new') }}
+                <div class="mt-3">
+                    <label class="form-label">First arrival date</label>
+                    <input type="text" name="start_date" class="form-control"
+                           inputmode="numeric" placeholder="dd/mm/yyyy"
+                           pattern="\d{1,2}/\d{1,2}/\d{4}"
+                           title="Day/month/year, e.g. 25/08/2026">
+                    <div class="form-text">Day/month/year — e.g. 25/08/2026. Blank starts today.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add source</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Hide the "every N <unit>" control for one-off income, and keep its suffix
+// in step with the chosen unit.
+document.querySelectorAll('.freq-unit').forEach(function (select) {
+    function sync() {
+        var group = document.getElementById(select.dataset.target);
+        if (!group) return;
+        var oneOff = select.value === 'one-off';
+        group.style.display = oneOff ? 'none' : '';
+        var suffix = group.querySelector('.freq-suffix');
+        if (suffix && !oneOff) suffix.textContent = select.value;
+    }
+    select.addEventListener('change', sync);
+    sync();
+});
+</script>
 {% endblock %}
